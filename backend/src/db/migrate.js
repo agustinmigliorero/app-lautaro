@@ -1,8 +1,8 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const mysql = require('mysql2/promise');
-const { env } = require('../config/env');
+const mysql = require("mysql2/promise");
+const { env } = require("../config/env");
 
 async function ensureMigrationsTable(conn) {
   await conn.query(`
@@ -18,7 +18,7 @@ function listSqlFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
-    .filter((f) => f.toLowerCase().endsWith('.sql'))
+    .filter((f) => f.toLowerCase().endsWith(".sql"))
     .sort((a, b) => a.localeCompare(b));
 }
 
@@ -28,13 +28,13 @@ async function getApplied(conn) {
 }
 
 async function applyFile(conn, filePath, filename) {
-  const sql = fs.readFileSync(filePath, 'utf8');
+  const sql = fs.readFileSync(filePath, "utf8");
   // mysql2 permite múltiples statements solo si se habilita; evitamos eso separando por `;`
   // y ejecutando statement por statement de forma simple.
   const statements = sql
     .split(/;\s*$/m)
-    .join(';')
-    .split(';')
+    .join(";")
+    .split(";")
     .map((s) => s.trim())
     .filter(Boolean);
 
@@ -80,7 +80,7 @@ async function migrate() {
     await ensureMigrationsTable(conn);
     const applied = await getApplied(conn);
 
-    const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
+    const migrationsDir = path.join(__dirname, "..", "..", "migrations");
     const files = listSqlFiles(migrationsDir);
 
     for (const filename of files) {
@@ -90,7 +90,7 @@ async function migrate() {
       await applyFile(conn, filePath, filename);
     }
 
-    console.log('Migrations complete.');
+    console.log("Migrations complete.");
   } finally {
     await conn.end();
   }
@@ -100,5 +100,3 @@ migrate().catch((err) => {
   console.error(err);
   process.exitCode = 1;
 });
-
-

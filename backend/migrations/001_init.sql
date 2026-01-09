@@ -1,4 +1,5 @@
--- Base schema (adaptado desde db.sql) + fixes mínimos para que compile
+-- Schema único (producción)
+-- Importante: no usar el caracter punto y coma en comentarios, el runner separa statements por ese caracter
 
 CREATE TABLE IF NOT EXISTS Areas (
   id_area INT AUTO_INCREMENT PRIMARY KEY,
@@ -12,20 +13,8 @@ CREATE TABLE IF NOT EXISTS Dispositivos (
   descripcion VARCHAR(150),
   id_area INT NOT NULL,
   nro_patrimonio VARCHAR(50) UNIQUE,
-  FOREIGN KEY (id_area) REFERENCES Areas(id_area)
+  CONSTRAINT fk_dispositivos_area FOREIGN KEY (id_area) REFERENCES Areas(id_area)
 );
-
-CREATE TABLE IF NOT EXISTS DispositivoComponentes (
-  id_componente INT AUTO_INCREMENT PRIMARY KEY,
-  id_equipo INT NOT NULL,
-  tipo ENUM('Hardware','Software','Periférico') NOT NULL,
-  detalle TEXT NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_equipo) REFERENCES Dispositivos(id_equipo)
-);
-
-CREATE INDEX idx_dispositivo_componentes_equipo ON DispositivoComponentes (id_equipo);
 
 CREATE TABLE IF NOT EXISTS Usuarios (
   id_usuario INT AUTO_INCREMENT PRIMARY KEY,
@@ -38,7 +27,7 @@ CREATE TABLE IF NOT EXISTS Usuarios (
   password_hash VARCHAR(255) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_area) REFERENCES Areas(id_area)
+  CONSTRAINT fk_usuarios_area FOREIGN KEY (id_area) REFERENCES Areas(id_area)
 );
 
 CREATE TABLE IF NOT EXISTS Diagnostico (
@@ -58,12 +47,24 @@ CREATE TABLE IF NOT EXISTS Solicitudes (
   id_equipo INT NULL,
   estado ENUM('Iniciada','En Proceso','Finalizada') NOT NULL DEFAULT 'Iniciada',
   id_diagnostico INT NULL,
-  FOREIGN KEY (usuario_solicitud) REFERENCES Usuarios(id_usuario),
-  FOREIGN KEY (usuario_generador) REFERENCES Usuarios(id_usuario),
-  FOREIGN KEY (usuario_asignado) REFERENCES Usuarios(id_usuario),
-  FOREIGN KEY (id_area) REFERENCES Areas(id_area),
-  FOREIGN KEY (id_equipo) REFERENCES Dispositivos(id_equipo),
-  FOREIGN KEY (id_diagnostico) REFERENCES Diagnostico(id_diagnostico)
+  resolucion_metodo ENUM('Laboratorio','Telefónica','Remota','Desplazamiento') NULL,
+  CONSTRAINT fk_solicitudes_usuario_solicitud FOREIGN KEY (usuario_solicitud) REFERENCES Usuarios(id_usuario),
+  CONSTRAINT fk_solicitudes_usuario_generador FOREIGN KEY (usuario_generador) REFERENCES Usuarios(id_usuario),
+  CONSTRAINT fk_solicitudes_usuario_asignado FOREIGN KEY (usuario_asignado) REFERENCES Usuarios(id_usuario),
+  CONSTRAINT fk_solicitudes_id_area FOREIGN KEY (id_area) REFERENCES Areas(id_area),
+  CONSTRAINT fk_solicitudes_id_equipo FOREIGN KEY (id_equipo) REFERENCES Dispositivos(id_equipo),
+  CONSTRAINT fk_solicitudes_id_diagnostico FOREIGN KEY (id_diagnostico) REFERENCES Diagnostico(id_diagnostico),
+  CONSTRAINT chk_solicitudes_finalizada_requiere_diag_y_resolucion CHECK (
+    estado <> 'Finalizada'
+    OR (id_diagnostico IS NOT NULL AND resolucion_metodo IS NOT NULL)
+  ),
+  KEY idx_solicitudes_estado_fecha (estado, fecha),
+  KEY idx_solicitudes_asignado (usuario_asignado),
+  KEY idx_solicitudes_solicitante (usuario_solicitud),
+  KEY idx_solicitudes_generador (usuario_generador),
+  KEY idx_solicitudes_equipo (id_equipo),
+  KEY idx_solicitudes_area_fecha (id_area, fecha),
+  KEY idx_solicitudes_prioridad_fecha (prioridad, fecha)
 );
 
 CREATE TABLE IF NOT EXISTS Eventos (
@@ -72,18 +73,19 @@ CREATE TABLE IF NOT EXISTS Eventos (
   fecha_evento DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   observaciones TEXT,
   id_usuario INT NOT NULL,
-  FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(id_solicitud),
-  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario)
+  CONSTRAINT fk_eventos_solicitud FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(id_solicitud),
+  CONSTRAINT fk_eventos_usuario FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario),
+  KEY idx_eventos_solicitud_fecha (id_solicitud, fecha_evento)
 );
 
-CREATE INDEX idx_solicitudes_estado_fecha ON Solicitudes (estado, fecha);
-CREATE INDEX idx_solicitudes_asignado ON Solicitudes (usuario_asignado);
-CREATE INDEX idx_solicitudes_solicitante ON Solicitudes (usuario_solicitud);
-CREATE INDEX idx_solicitudes_generador ON Solicitudes (usuario_generador);
-CREATE INDEX idx_solicitudes_equipo ON Solicitudes (id_equipo);
-CREATE INDEX idx_solicitudes_area_fecha ON Solicitudes (id_area, fecha);
-CREATE INDEX idx_solicitudes_prioridad_fecha ON Solicitudes (prioridad, fecha);
-
-CREATE INDEX idx_eventos_solicitud_fecha ON Eventos (id_solicitud, fecha_evento);
-
+CREATE TABLE IF NOT EXISTS DispositivoComponentes (
+  id_componente INT AUTO_INCREMENT PRIMARY KEY,
+  id_equipo INT NOT NULL,
+  tipo ENUM('Hardware','Software','Periférico') NOT NULL,
+  detalle TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_dispositivo_componentes_equipo FOREIGN KEY (id_equipo) REFERENCES Dispositivos(id_equipo),
+  KEY idx_dispositivo_componentes_equipo (id_equipo)
+);
 

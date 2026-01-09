@@ -19,6 +19,7 @@ import { TablePagination } from "@/components/TablePagination";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useDraftState } from "@/lib/draft";
 import { useSession } from "@/lib/session";
+import { estadoBadgeClass, prioridadBadgeClass } from "@/lib/badges";
 import type { Evento, ListResponse, MeUser, Solicitud } from "@/lib/types";
 
 type Diagnostico = { id_diagnostico: number; descripcion: string };
@@ -91,10 +92,7 @@ export default function SolicitudDetallePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, token]);
 
-  const estadoBadgeVariant = useMemo(() => {
-    if (!solicitud) return "secondary" as const;
-    return solicitud.estado === "Finalizada" ? ("secondary" as const) : ("default" as const);
-  }, [solicitud]);
+  const prioridad = useMemo(() => (solicitud?.prioridad ?? "Medio") as NonNullable<Solicitud["prioridad"]>, [solicitud]);
 
   async function postEvento() {
     setPosting(true);
@@ -184,7 +182,16 @@ export default function SolicitudDetallePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               Detalle
-              {solicitud ? <Badge variant={estadoBadgeVariant}>{solicitud.estado}</Badge> : null}
+              {solicitud ? (
+                <Badge variant="outline" className={estadoBadgeClass(solicitud.estado)}>
+                  {solicitud.estado}
+                </Badge>
+              ) : null}
+              {solicitud ? (
+                <Badge variant="outline" className={prioridadBadgeClass(prioridad)}>
+                  {prioridad}
+                </Badge>
+              ) : null}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -199,7 +206,11 @@ export default function SolicitudDetallePage() {
                   {new Date(solicitud.fecha).toLocaleString()}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Equipo:</span> {solicitud.id_equipo}
+                  <span className="text-muted-foreground">Equipo:</span> {solicitud.id_equipo ?? "—"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Área:</span>{" "}
+                  {solicitud.area_nombre ?? solicitud.id_area ?? "—"}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Solicitante:</span> {solicitud.usuario_solicitud}

@@ -19,6 +19,7 @@ import { useSession } from "@/lib/session";
 import { DraftDock } from "@/components/DraftDock";
 import { useDraftState } from "@/lib/draft";
 import { SortableHead, type SortDir } from "@/components/SortableHead";
+import { estadoBadgeClass, prioridadBadgeClass } from "@/lib/badges";
 import type { Area, Dispositivo, ListResponse, MeUser, PaginatedResponse, Solicitud } from "@/lib/types";
 
 export default function SolicitudesPage() {
@@ -626,9 +627,18 @@ export default function SolicitudesPage() {
                     </TableCell>
                     <TableCell>{new Date(s.fecha).toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge variant={s.estado === "Finalizada" ? "secondary" : "default"}>{s.estado}</Badge>
+                      <Badge variant="outline" className={estadoBadgeClass(s.estado)}>
+                        {s.estado}
+                      </Badge>
                     </TableCell>
-                    <TableCell>{s.prioridad ?? "Medio"}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={prioridadBadgeClass((s.prioridad ?? "Medio") as any)}
+                      >
+                        {s.prioridad ?? "Medio"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{s.area_nombre ?? s.id_area ?? "—"}</TableCell>
                     <TableCell>{s.id_equipo ?? "—"}</TableCell>
                     <TableCell>{s.usuario_asignado ?? "—"}</TableCell>

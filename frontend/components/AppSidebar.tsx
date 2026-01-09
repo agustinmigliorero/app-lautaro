@@ -33,7 +33,7 @@ export function AppSidebar() {
   ];
 
   return (
-    <aside className="w-64 shrink-0 border-r bg-background">
+    <aside className="w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground shadow-sm">
       <div className="flex h-16 items-center px-4">
         <div className="flex flex-col">
           <span className="text-sm font-semibold leading-4">Mesa de Ayuda</span>
@@ -52,8 +52,11 @@ export function AppSidebar() {
               <Button
                 key={item.href}
                 asChild
-                variant={active ? "secondary" : "ghost"}
-                className={cn("w-full justify-start gap-2", active && "font-medium")}
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-2 border border-transparent",
+                  active && "bg-sidebar-accent text-sidebar-accent-foreground border-sidebar-border font-medium"
+                )}
               >
                 <Link href={item.href}>
                   {item.icon}

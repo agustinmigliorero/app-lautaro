@@ -120,6 +120,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    /* Fondo suave tipo backoffice: mejora contraste de cards/tablas */
+    @apply bg-muted/30 text-foreground;
   }
 }

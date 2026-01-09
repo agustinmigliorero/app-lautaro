@@ -6,12 +6,6 @@ CREATE TABLE IF NOT EXISTS Areas (
   descripcion TEXT
 );
 
-CREATE TABLE IF NOT EXISTS Componentes (
-  id_componente INT AUTO_INCREMENT PRIMARY KEY,
-  tipo ENUM('Hardware','Software','Periférico') NOT NULL,
-  detalle TEXT
-);
-
 CREATE TABLE IF NOT EXISTS Dispositivos (
   id_equipo INT AUTO_INCREMENT PRIMARY KEY,
   tipo ENUM('Celular','Notebook','Conectividad','Impresora','UPS','PC Escritorio','Otro') NOT NULL DEFAULT 'Otro',
@@ -20,6 +14,18 @@ CREATE TABLE IF NOT EXISTS Dispositivos (
   nro_patrimonio VARCHAR(50) UNIQUE,
   FOREIGN KEY (id_area) REFERENCES Areas(id_area)
 );
+
+CREATE TABLE IF NOT EXISTS DispositivoComponentes (
+  id_componente INT AUTO_INCREMENT PRIMARY KEY,
+  id_equipo INT NOT NULL,
+  tipo ENUM('Hardware','Software','Periférico') NOT NULL,
+  detalle TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_equipo) REFERENCES Dispositivos(id_equipo)
+);
+
+CREATE INDEX idx_dispositivo_componentes_equipo ON DispositivoComponentes (id_equipo);
 
 CREATE TABLE IF NOT EXISTS Usuarios (
   id_usuario INT AUTO_INCREMENT PRIMARY KEY,
@@ -68,16 +74,6 @@ CREATE TABLE IF NOT EXISTS Eventos (
   id_usuario INT NOT NULL,
   FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(id_solicitud),
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario)
-);
-
-CREATE TABLE IF NOT EXISTS ComponentesDispositivos (
-  id_equipo INT NOT NULL,
-  id_componente INT NOT NULL,
-  fecha_asignacion DATE NOT NULL,
-  fecha_baja DATE,
-  PRIMARY KEY (id_equipo, id_componente),
-  FOREIGN KEY (id_equipo) REFERENCES Dispositivos(id_equipo),
-  FOREIGN KEY (id_componente) REFERENCES Componentes(id_componente)
 );
 
 CREATE INDEX idx_solicitudes_estado_fecha ON Solicitudes (estado, fecha);

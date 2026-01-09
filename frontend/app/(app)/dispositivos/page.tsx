@@ -18,6 +18,7 @@ import { useDraftState } from "@/lib/draft";
 import { useSession } from "@/lib/session";
 import { hasMinRole } from "@/lib/roles";
 import type { Area, Dispositivo, ListResponse } from "@/lib/types";
+import Link from "next/link";
 
 const TIPOS_DISPOSITIVO = [
   "Celular",
@@ -399,13 +400,16 @@ export default function DispositivosPage() {
                     <TableCell>{d.nro_patrimonio ?? "—"}</TableCell>
                     <TableCell>{d.descripcion ?? "—"}</TableCell>
                     <TableCell className="text-right">
-                      {canCreate ? (
-                        <Button size="sm" variant="ghost" onClick={() => startEdit(d)}>
-                          Editar
+                      <div className="flex justify-end gap-2 flex-wrap">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/dispositivos/${d.id_equipo}`}>Ver más</Link>
                         </Button>
-                      ) : (
-                        "—"
-                      )}
+                        {canCreate ? (
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(d)}>
+                            Editar
+                          </Button>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

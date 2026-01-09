@@ -25,19 +25,13 @@ export type Dispositivo = {
   area_nombre?: string;
 };
 
-export type Componente = {
+export type DispositivoComponente = {
   id_componente: number;
+  id_equipo: number;
   tipo: "Hardware" | "Software" | "Periférico";
   detalle: string;
-};
-
-export type DispositivoComponente = {
-  id_equipo: number;
-  id_componente: number;
-  fecha_asignacion: string;
-  fecha_baja: string | null;
-  componente_tipo: "Hardware" | "Software" | "Periférico";
-  componente_detalle: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type Diagnostico = {

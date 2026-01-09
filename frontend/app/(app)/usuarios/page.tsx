@@ -19,6 +19,7 @@ import { applyClientSort } from "@/lib/clientSort";
 import { hasMinRole } from "@/lib/roles";
 import { useSession } from "@/lib/session";
 import type { Area, ListResponse, Role, UsuarioListItem } from "@/lib/types";
+import Link from "next/link";
 
 function toBool(v: unknown): boolean {
   if (typeof v === "boolean") return v;
@@ -526,8 +527,12 @@ export default function UsuariosPage() {
                       <TableCell>{u.perfil_rol}</TableCell>
                       <TableCell>{toBool(u.habilitado) ? "Sí" : "No"}</TableCell>
                       <TableCell className="text-right">
-                        {isAdmin ? (
-                          <div className="flex justify-end gap-2 flex-wrap">
+                        <div className="flex justify-end gap-2 flex-wrap">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/usuarios/${u.id_usuario}`}>Ver más</Link>
+                          </Button>
+                          {isAdmin ? (
+                            <>
                             <Select
                               value={u.perfil_rol}
                               onValueChange={(v) =>
@@ -588,10 +593,9 @@ export default function UsuariosPage() {
                             >
                               Reset password
                             </Button>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
+                            </>
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

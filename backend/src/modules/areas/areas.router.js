@@ -19,6 +19,33 @@ router.get("/", authJwt, async (req, res, next) => {
   }
 });
 
+// Detalle de área (cualquier usuario autenticado)
+router.get("/:id", authJwt, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || Number.isNaN(id)) throw httpError(400, "id inválido");
+
+    const [[area]] = await pool.query(
+      `SELECT id_area, nombre, descripcion FROM Areas WHERE id_area = ?`,
+      [id]
+    );
+    if (!area) throw httpError(404, "Área no encontrada");
+
+    const [[stats]] = await pool.query(
+      `
+      SELECT
+        (SELECT COUNT(*) FROM Usuarios u WHERE u.id_area = ?) AS usuarios_total,
+        (SELECT COUNT(*) FROM Dispositivos d WHERE d.id_area = ?) AS dispositivos_total
+      `,
+      [id, id]
+    );
+
+    res.json({ area, stats });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Crear área (Admin)
 router.post("/", authJwt, requireRole("Admin"), async (req, res, next) => {
   try {

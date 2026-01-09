@@ -600,18 +600,19 @@ export default function SolicitudesPage() {
                     onToggle={() => toggleSort("usuario_asignado")}
                   />
                 </TableHead>
+                <TableHead className="text-right">Ver más</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground">
+                  <TableCell colSpan={8} className="text-muted-foreground">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground">
+                  <TableCell colSpan={8} className="text-muted-foreground">
                     No hay solicitudes.
                   </TableCell>
                 </TableRow>
@@ -631,6 +632,11 @@ export default function SolicitudesPage() {
                     <TableCell>{s.area_nombre ?? s.id_area ?? "—"}</TableCell>
                     <TableCell>{s.id_equipo ?? "—"}</TableCell>
                     <TableCell>{s.usuario_asignado ?? "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/solicitudes/${s.id_solicitud}`}>Ver más</Link>
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}

@@ -15,7 +15,7 @@ import { DraftDock } from "@/components/DraftDock";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useDraftState } from "@/lib/draft";
 import { useSession } from "@/lib/session";
-import type { Area, Componente, Dispositivo, DispositivoComponente, ListResponse } from "@/lib/types";
+import type { Area, Dispositivo, DispositivoComponente, ListResponse } from "@/lib/types";
 
 const TIPOS_DISPOSITIVO = [
   "Celular",
@@ -36,7 +36,6 @@ export default function DispositivoDetallePage() {
   const [dispositivo, setDispositivo] = useState<Dispositivo | null>(null);
   const [componentes, setComponentes] = useState<DispositivoComponente[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
-  const [catalogo, setCatalogo] = useState<Componente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,43 +53,36 @@ export default function DispositivoDetallePage() {
     editDraft.value.nroPatrimonio.trim().length > 0 ||
     editDraft.value.idArea.trim().length > 0;
 
-  // Modal asignar componente
-  const [openAssign, setOpenAssign] = useState(false);
-  const [minimizedAssign, setMinimizedAssign] = useState(false);
-  const assignDraft = useDraftState(
-    `dispositivos:${id}:assign`,
-    { idComponente: "" },
-    { storage: "local" }
-  );
-  const [assigning, setAssigning] = useState(false);
-  const hasAssignDraft = assignDraft.value.idComponente.trim().length > 0;
-
-  // Modal crear componente
+  // Modal crear componente (dentro del dispositivo)
   const [openNewComp, setOpenNewComp] = useState(false);
   const [minimizedNewComp, setMinimizedNewComp] = useState(false);
   const newCompDraft = useDraftState(
-    `componentes:new`,
+    `dispositivos:${id}:componentes:new`,
     { tipo: "Hardware" as const, detalle: "" },
     { storage: "local" }
   );
   const [creatingComp, setCreatingComp] = useState(false);
   const hasNewCompDraft = newCompDraft.value.detalle.trim().length > 0;
 
+  // Modal editar componente
+  const [openEditComp, setOpenEditComp] = useState(false);
+  const [minimizedEditComp, setMinimizedEditComp] = useState(false);
+  const editCompDraft = useDraftState(
+    `dispositivos:${id}:componentes:edit`,
+    { id: 0, tipo: "Hardware" as "Hardware" | "Software" | "Periférico", detalle: "" },
+    { storage: "local" }
+  );
+  const [savingComp, setSavingComp] = useState(false);
+  const hasEditCompDraft = Boolean(editCompDraft.value.id) && editCompDraft.value.detalle.trim().length > 0;
+
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const [a, c] = await Promise.all([
-        apiFetch<ListResponse<Area>>("/areas", { token }),
-        apiFetch<ListResponse<Componente>>("/componentes", { token }),
-      ]);
+      const [a] = await Promise.all([apiFetch<ListResponse<Area>>("/areas", { token })]);
       setAreas(a.items);
-      setCatalogo(c.items);
 
-      const d = await apiFetch<{ dispositivo: Dispositivo; componentes: DispositivoComponente[] }>(
-        `/dispositivos/${id}`,
-        { token }
-      );
+      const d = await apiFetch<{ dispositivo: Dispositivo; componentes: DispositivoComponente[] }>(`/dispositivos/${id}`, { token });
       setDispositivo(d.dispositivo);
       setComponentes(d.componentes);
 
@@ -114,11 +106,7 @@ export default function DispositivoDetallePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, token]);
 
-  const asignadosIds = useMemo(() => new Set(componentes.map((c) => c.id_componente)), [componentes]);
-  const catalogoDisponible = useMemo(
-    () => catalogo.filter((c) => !asignadosIds.has(c.id_componente)),
-    [catalogo, asignadosIds]
-  );
+  const componentesSorted = useMemo(() => [...componentes].sort((a, b) => b.id_componente - a.id_componente), [componentes]);
 
   async function saveDevice() {
     setSaving(true);
@@ -144,37 +132,17 @@ export default function DispositivoDetallePage() {
     }
   }
 
-  async function assignComponent() {
-    setAssigning(true);
+  async function deleteComponent(id_componente: number) {
     setError(null);
     try {
-      await apiFetch<{ ok: true }>(`/dispositivos/${id}/componentes`, {
-        method: "POST",
-        token,
-        body: { id_componente: Number(assignDraft.value.idComponente) },
-      });
-      assignDraft.clear();
-      setOpenAssign(false);
-      setMinimizedAssign(false);
-      await load();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "No se pudo asignar el componente");
-    } finally {
-      setAssigning(false);
-    }
-  }
-
-  async function bajaComponent(id_componente: number) {
-    setError(null);
-    try {
-      await apiFetch<{ ok: true }>(`/dispositivos/${id}/componentes/${id_componente}/baja`, {
-        method: "PATCH",
+      await apiFetch<{ ok: true }>(`/dispositivos/${id}/componentes/${id_componente}`, {
+        method: "DELETE",
         token,
         body: {},
       });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "No se pudo dar de baja el componente");
+      setError(e instanceof ApiError ? e.message : "No se pudo eliminar el componente");
     }
   }
 
@@ -182,7 +150,7 @@ export default function DispositivoDetallePage() {
     setCreatingComp(true);
     setError(null);
     try {
-      const created = await apiFetch<{ id_componente: number }>(`/componentes`, {
+      await apiFetch<{ id_componente: number }>(`/dispositivos/${id}/componentes`, {
         method: "POST",
         token,
         body: { tipo: newCompDraft.value.tipo, detalle: newCompDraft.value.detalle.trim() },
@@ -190,17 +158,37 @@ export default function DispositivoDetallePage() {
       newCompDraft.clear();
       setOpenNewComp(false);
       setMinimizedNewComp(false);
-
-      // recargar catálogo y seleccionar para asignar
-      const c = await apiFetch<ListResponse<Componente>>("/componentes", { token });
-      setCatalogo(c.items);
-      assignDraft.setValue({ idComponente: String(created.id_componente) });
-      setOpenAssign(true);
-      setMinimizedAssign(false);
+      await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "No se pudo crear el componente");
     } finally {
       setCreatingComp(false);
+    }
+  }
+
+  function startEditComponent(c: DispositivoComponente) {
+    editCompDraft.setValue({ id: c.id_componente, tipo: c.tipo, detalle: c.detalle });
+    setOpenEditComp(true);
+    setMinimizedEditComp(false);
+  }
+
+  async function saveComponent() {
+    setSavingComp(true);
+    setError(null);
+    try {
+      await apiFetch<{ ok: true }>(`/dispositivos/${id}/componentes/${editCompDraft.value.id}`, {
+        method: "PATCH",
+        token,
+        body: { tipo: editCompDraft.value.tipo, detalle: editCompDraft.value.detalle.trim() },
+      });
+      editCompDraft.clear();
+      setOpenEditComp(false);
+      setMinimizedEditComp(false);
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo guardar el componente");
+    } finally {
+      setSavingComp(false);
     }
   }
 
@@ -256,7 +244,6 @@ export default function DispositivoDetallePage() {
             {canEdit ? (
               <div className="flex gap-2">
                 <Button
-                  variant="outline"
                   onClick={() => {
                     setOpenNewComp(true);
                     setMinimizedNewComp(false);
@@ -264,15 +251,6 @@ export default function DispositivoDetallePage() {
                   disabled={loading}
                 >
                   Nuevo componente
-                </Button>
-                <Button
-                  onClick={() => {
-                    setOpenAssign(true);
-                    setMinimizedAssign(false);
-                  }}
-                  disabled={loading}
-                >
-                  Asignar
                 </Button>
               </div>
             ) : null}
@@ -285,42 +263,42 @@ export default function DispositivoDetallePage() {
                     <TableHead>ID</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Detalle</TableHead>
-                    <TableHead>Asignación</TableHead>
-                    <TableHead>Baja</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-muted-foreground">
+                      <TableCell colSpan={4} className="text-muted-foreground">
                         Cargando...
                       </TableCell>
                     </TableRow>
                   ) : componentes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-muted-foreground">
+                      <TableCell colSpan={4} className="text-muted-foreground">
                         Sin componentes asignados.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    componentes.map((c) => (
+                    componentesSorted.map((c) => (
                       <TableRow key={`${c.id_equipo}-${c.id_componente}`}>
                         <TableCell className="font-medium">{c.id_componente}</TableCell>
-                        <TableCell>{c.componente_tipo}</TableCell>
-                        <TableCell>{c.componente_detalle}</TableCell>
-                        <TableCell>{c.fecha_asignacion}</TableCell>
-                        <TableCell>{c.fecha_baja ?? "—"}</TableCell>
+                        <TableCell>{c.tipo}</TableCell>
+                        <TableCell>{c.detalle}</TableCell>
                         <TableCell className="text-right">
                           {canEdit ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => bajaComponent(c.id_componente)}
-                              disabled={Boolean(c.fecha_baja)}
-                            >
-                              Dar de baja
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <Button size="sm" variant="outline" onClick={() => startEditComponent(c)}>
+                                Editar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => deleteComponent(c.id_componente)}
+                              >
+                                Eliminar
+                              </Button>
+                            </div>
                           ) : (
                             "—"
                           )}
@@ -447,77 +425,85 @@ export default function DispositivoDetallePage() {
         className="bottom-4"
       />
 
-      {/* Asignar componente */}
+      {/* Editar componente */}
       <Dialog
-        open={openAssign}
+        open={openEditComp}
         onOpenChange={(v) => {
-          setOpenAssign(v);
-          if (!v) setMinimizedAssign(hasAssignDraft);
+          setOpenEditComp(v);
+          if (!v) setMinimizedEditComp(hasEditCompDraft);
         }}
       >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Asignar componente</DialogTitle>
+            <DialogTitle>Editar componente</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label>Componente</Label>
-            <Select
-              value={assignDraft.value.idComponente}
-              onValueChange={(val) => assignDraft.setValue({ idComponente: val })}
-              disabled={assigning}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                {catalogoDisponible.map((c) => (
-                  <SelectItem key={c.id_componente} value={String(c.id_componente)}>
-                    {c.id_componente} · {c.tipo} · {c.detalle}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={editCompDraft.value.tipo}
+                onValueChange={(val) => editCompDraft.setValue((d) => ({ ...d, tipo: val as any }))}
+                disabled={savingComp}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Hardware">Hardware</SelectItem>
+                  <SelectItem value="Software">Software</SelectItem>
+                  <SelectItem value="Periférico">Periférico</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Detalle</Label>
+              <Input
+                value={editCompDraft.value.detalle}
+                onChange={(e) => editCompDraft.setValue((d) => ({ ...d, detalle: e.target.value }))}
+                disabled={savingComp}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
               variant="ghost"
               onClick={() => {
-                setOpenAssign(false);
-                setMinimizedAssign(hasAssignDraft);
+                setOpenEditComp(false);
+                setMinimizedEditComp(hasEditCompDraft);
               }}
-              disabled={assigning}
+              disabled={savingComp}
             >
               Minimizar
             </Button>
             <Button
               variant="outline"
               onClick={() => {
-                assignDraft.clear();
-                setMinimizedAssign(false);
-                setOpenAssign(false);
+                editCompDraft.clear();
+                setMinimizedEditComp(false);
+                setOpenEditComp(false);
               }}
-              disabled={assigning}
+              disabled={savingComp}
             >
               Descartar
             </Button>
-            <Button onClick={assignComponent} disabled={assigning || !assignDraft.value.idComponente}>
-              {assigning ? "Asignando..." : "Asignar"}
+            <Button onClick={saveComponent} disabled={savingComp || editCompDraft.value.detalle.trim().length === 0}>
+              {savingComp ? "Guardando..." : "Guardar"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <DraftDock
-        title="Asignar componente"
-        description={`Dispositivo #${id}`}
-        visible={minimizedAssign && hasAssignDraft}
+        title="Editar componente"
+        description={editCompDraft.value.id ? `ID ${editCompDraft.value.id}` : undefined}
+        visible={minimizedEditComp && hasEditCompDraft}
         onRestore={() => {
-          setOpenAssign(true);
-          setMinimizedAssign(false);
+          setOpenEditComp(true);
+          setMinimizedEditComp(false);
         }}
         onDiscard={() => {
-          assignDraft.clear();
-          setMinimizedAssign(false);
+          editCompDraft.clear();
+          setMinimizedEditComp(false);
         }}
         className="bottom-24"
       />
@@ -592,7 +578,7 @@ export default function DispositivoDetallePage() {
 
       <DraftDock
         title="Nuevo componente"
-        description="Catálogo"
+        description={`Dispositivo #${id}`}
         visible={minimizedNewComp && hasNewCompDraft}
         onRestore={() => {
           setOpenNewComp(true);

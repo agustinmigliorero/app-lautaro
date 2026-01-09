@@ -53,6 +53,43 @@ router.get("/", authJwt, requireRole("Soporte"), async (req, res, next) => {
   }
 });
 
+// Detalle de usuario (Soporte/Admin)
+router.get("/:id", authJwt, requireRole("Soporte"), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || Number.isNaN(id)) throw httpError(400, "id inválido");
+
+    const [[user]] = await pool.query(
+      `
+      SELECT
+        u.id_usuario, u.apellido_nombre, u.nombre_usuario, u.legajo,
+        u.perfil_rol, u.habilitado, u.id_area,
+        a.nombre AS area_nombre,
+        u.created_at, u.updated_at
+      FROM Usuarios u
+      JOIN Areas a ON a.id_area = u.id_area
+      WHERE u.id_usuario = ?
+      `,
+      [id]
+    );
+    if (!user) throw httpError(404, "Usuario no encontrado");
+
+    const [[stats]] = await pool.query(
+      `
+      SELECT
+        (SELECT COUNT(*) FROM Solicitudes s WHERE s.usuario_solicitud = ?) AS solicitudes_como_solicitante,
+        (SELECT COUNT(*) FROM Solicitudes s WHERE s.usuario_generador = ?) AS solicitudes_creadas,
+        (SELECT COUNT(*) FROM Solicitudes s WHERE s.usuario_asignado = ?) AS solicitudes_asignadas
+      `,
+      [id, id, id]
+    );
+
+    res.json({ user, stats });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Crear usuario (Soporte/Admin)
 router.post("/", authJwt, requireRole("Soporte"), async (req, res, next) => {
   try {

@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { DraftDock } from "@/components/DraftDock";
 import { TablePagination } from "@/components/TablePagination";
+import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useDraftState } from "@/lib/draft";
 import { useSession } from "@/lib/session";
@@ -295,13 +296,16 @@ export default function AreasPage() {
                     <TableCell>{a.nombre}</TableCell>
                     <TableCell className="max-w-[520px]">{a.descripcion || "—"}</TableCell>
                     <TableCell className="text-right">
-                      {isAdmin ? (
-                        <Button size="sm" variant="ghost" onClick={() => startEdit(a.id_area)}>
-                          Editar
+                      <div className="flex justify-end gap-2 flex-wrap">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/areas/${a.id_area}`}>Ver más</Link>
                         </Button>
-                      ) : (
-                        "—"
-                      )}
+                        {isAdmin ? (
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(a.id_area)}>
+                            Editar
+                          </Button>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

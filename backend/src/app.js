@@ -16,6 +16,7 @@ const {
 const {
   diagnosticosRouter,
 } = require("./modules/diagnosticos/diagnosticos.router");
+const { reportesRouter } = require("./modules/reportes/reportes.router");
 
 function createApp() {
   const app = express();
@@ -35,6 +36,7 @@ function createApp() {
   app.use("/areas", areasRouter);
   app.use("/dispositivos", dispositivosRouter);
   app.use("/diagnosticos", diagnosticosRouter);
+  app.use("/reportes", reportesRouter);
   app.use("/solicitudes", solicitudesRouter);
 
   app.use(errorHandler);

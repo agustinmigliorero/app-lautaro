@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, Cpu, LogOut, MapPinned, Settings, Stethoscope, Users } from "lucide-react";
+import { BarChart3, ClipboardList, Cpu, LogOut, MapPinned, Settings, Stethoscope, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export function AppSidebar() {
 
   const nav: NavItem[] = [
     { href: "/solicitudes", label: "Solicitudes", icon: <ClipboardList className="h-4 w-4" /> },
+    { href: "/reportes", label: "Reportes", icon: <BarChart3 className="h-4 w-4" />, minRole: "Soporte" },
     { href: "/usuarios", label: "Usuarios", icon: <Users className="h-4 w-4" />, minRole: "Soporte" },
     { href: "/areas", label: "Áreas", icon: <MapPinned className="h-4 w-4" />, minRole: "Soporte" },
     { href: "/dispositivos", label: "Dispositivos", icon: <Cpu className="h-4 w-4" />, minRole: "Soporte" },

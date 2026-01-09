@@ -40,6 +40,31 @@ router.get("/:id", authJwt, async (req, res, next) => {
       [id, id]
     );
 
+    const rol = req.user?.rol || "Empleado";
+    if (rol === "Soporte" || rol === "Admin") {
+      const [usuarios] = await pool.query(
+        `
+        SELECT
+          u.id_usuario, u.apellido_nombre, u.nombre_usuario, u.legajo,
+          u.perfil_rol, u.habilitado, u.id_area
+        FROM Usuarios u
+        WHERE u.id_area = ?
+        ORDER BY u.apellido_nombre ASC
+        `,
+        [id]
+      );
+      const [dispositivos] = await pool.query(
+        `
+        SELECT d.id_equipo, d.tipo, d.descripcion, d.id_area, d.nro_patrimonio
+        FROM Dispositivos d
+        WHERE d.id_area = ?
+        ORDER BY d.id_equipo DESC
+        `,
+        [id]
+      );
+      return res.json({ area, stats, usuarios, dispositivos });
+    }
+
     res.json({ area, stats });
   } catch (e) {
     next(e);

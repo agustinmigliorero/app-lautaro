@@ -70,6 +70,29 @@ export default function UsuariosPage() {
 
   // Admin actions (inline)
   const [savingId, setSavingId] = useState<number | null>(null);
+  // Modal: editar usuario (Admin)
+  const [openEditUser, setOpenEditUser] = useState(false);
+  const [minimizedEditUser, setMinimizedEditUser] = useState(false);
+  const editUserDraft = useDraftState(
+    "usuarios:edit",
+    {
+      id: 0,
+      apellidoNombre: "",
+      nombreUsuario: "",
+      legajo: "",
+      perfilRol: "Empleado" as Role,
+      idArea: "",
+      habilitado: true,
+    },
+    { storage: "local" }
+  );
+  const [savingUser, setSavingUser] = useState(false);
+  const hasEditUserDraft =
+    Boolean(editUserDraft.value.id) &&
+    (editUserDraft.value.apellidoNombre.trim().length > 0 ||
+      editUserDraft.value.nombreUsuario.trim().length > 0 ||
+      (editUserDraft.value.legajo ?? "").trim().length > 0 ||
+      editUserDraft.value.idArea.trim().length > 0);
   // Modal: reset password (Admin) - en memoria
   const [resetUserId, setResetUserId] = useState<number | null>(null);
   const [openReset, setOpenReset] = useState(false);
@@ -96,6 +119,47 @@ export default function UsuariosPage() {
       setError(e instanceof ApiError ? e.message : "No se pudieron cargar usuarios");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function startEditUser(u: UsuarioListItem) {
+    editUserDraft.setValue({
+      id: u.id_usuario,
+      apellidoNombre: u.apellido_nombre,
+      nombreUsuario: u.nombre_usuario,
+      legajo: u.legajo ?? "",
+      perfilRol: u.perfil_rol,
+      idArea: String(u.id_area),
+      habilitado: toBool(u.habilitado),
+    });
+    setOpenEditUser(true);
+    setMinimizedEditUser(false);
+  }
+
+  async function saveEditUser() {
+    setSavingUser(true);
+    setError(null);
+    try {
+      await apiFetch<{ ok: true }>(`/usuarios/${editUserDraft.value.id}`, {
+        method: "PATCH",
+        token,
+        body: {
+          apellido_nombre: editUserDraft.value.apellidoNombre.trim(),
+          nombre_usuario: editUserDraft.value.nombreUsuario.trim(),
+          legajo: (editUserDraft.value.legajo ?? "").trim() || null,
+          perfil_rol: editUserDraft.value.perfilRol,
+          id_area: Number(editUserDraft.value.idArea),
+          habilitado: Boolean(editUserDraft.value.habilitado),
+        },
+      });
+      editUserDraft.clear();
+      setOpenEditUser(false);
+      setMinimizedEditUser(false);
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo guardar el usuario");
+    } finally {
+      setSavingUser(false);
     }
   }
 
@@ -533,43 +597,14 @@ export default function UsuariosPage() {
                           </Button>
                           {isAdmin ? (
                             <>
-                            <Select
-                              value={u.perfil_rol}
-                              onValueChange={(v) =>
-                                adminUpdateUser(u.id_usuario, { perfil_rol: v as Role })
-                              }
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEditUser(u)}
                               disabled={busy}
                             >
-                              <SelectTrigger className="h-8 w-[140px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(["Empleado", "Soporte", "Admin"] as Role[]).map((r) => (
-                                  <SelectItem key={r} value={r}>
-                                    {r}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-
-                            <Select
-                              value={String(u.id_area)}
-                              onValueChange={(v) =>
-                                adminUpdateUser(u.id_usuario, { id_area: Number(v) })
-                              }
-                              disabled={busy}
-                            >
-                              <SelectTrigger className="h-8 w-[160px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {areas.map((a) => (
-                                  <SelectItem key={a.id_area} value={String(a.id_area)}>
-                                    {a.nombre}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              Editar
+                            </Button>
 
                             <Button
                               size="sm"
@@ -645,6 +680,143 @@ export default function UsuariosPage() {
           setResetPasswordValue("");
           setResetUserId(null);
           setMinimizedReset(false);
+        }}
+        className="bottom-24"
+      />
+
+      <Dialog
+        open={openEditUser}
+        onOpenChange={(v) => {
+          setOpenEditUser(v);
+          if (!v) setMinimizedEditUser(hasEditUserDraft);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Editar usuario</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Apellido y nombre</Label>
+              <Input
+                value={editUserDraft.value.apellidoNombre}
+                onChange={(e) => editUserDraft.setValue((d) => ({ ...d, apellidoNombre: e.target.value }))}
+                disabled={savingUser}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nombre de usuario</Label>
+              <Input
+                value={editUserDraft.value.nombreUsuario}
+                onChange={(e) => editUserDraft.setValue((d) => ({ ...d, nombreUsuario: e.target.value }))}
+                disabled={savingUser}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Legajo</Label>
+              <Input
+                value={editUserDraft.value.legajo}
+                onChange={(e) => editUserDraft.setValue((d) => ({ ...d, legajo: e.target.value }))}
+                disabled={savingUser}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rol</Label>
+              <Select
+                value={editUserDraft.value.perfilRol}
+                onValueChange={(v) => editUserDraft.setValue((d) => ({ ...d, perfilRol: v as Role }))}
+                disabled={savingUser}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["Empleado", "Soporte", "Admin"] as Role[]).map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Área</Label>
+              <Select
+                value={editUserDraft.value.idArea}
+                onValueChange={(v) => editUserDraft.setValue((d) => ({ ...d, idArea: v }))}
+                disabled={savingUser}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {areas.map((a) => (
+                    <SelectItem key={a.id_area} value={String(a.id_area)}>
+                      {a.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={editUserDraft.value.habilitado}
+                  onCheckedChange={(v) => editUserDraft.setValue((d) => ({ ...d, habilitado: v }))}
+                  disabled={savingUser}
+                />
+                <span className="text-sm">Habilitado</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setOpenEditUser(false);
+                setMinimizedEditUser(hasEditUserDraft);
+              }}
+              disabled={savingUser}
+            >
+              Minimizar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                editUserDraft.clear();
+                setMinimizedEditUser(false);
+                setOpenEditUser(false);
+              }}
+              disabled={savingUser}
+            >
+              Descartar
+            </Button>
+            <Button
+              onClick={saveEditUser}
+              disabled={
+                savingUser ||
+                editUserDraft.value.apellidoNombre.trim().length === 0 ||
+                editUserDraft.value.nombreUsuario.trim().length === 0 ||
+                editUserDraft.value.idArea.trim().length === 0
+              }
+            >
+              {savingUser ? "Guardando..." : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DraftDock
+        title="Editar usuario"
+        description={editUserDraft.value.id ? `ID ${editUserDraft.value.id}` : undefined}
+        visible={minimizedEditUser && hasEditUserDraft}
+        onRestore={() => {
+          setOpenEditUser(true);
+          setMinimizedEditUser(false);
+        }}
+        onDiscard={() => {
+          editUserDraft.clear();
+          setMinimizedEditUser(false);
         }}
         className="bottom-24"
       />
